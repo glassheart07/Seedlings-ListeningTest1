@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Listening Test Player</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 4px;
+      background: rgba(50, 3, 3, 0.5);
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+      margin-top: 10px;
+    }
+    .controls button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 3px 7px;
+      margin: 2px;
+      border-radius: 3px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .controls button: hover {
+      background: #880533;
+    }
+    .info {
+      margin-top: 5px;
+      color: white;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <b style="color: white;">Audio Player</b>
+  
+  <audio id="audio" preload="auto" autoplay style="display: none;">
+    <source src="SeedlingsListeningTest1.mp3" type="audio/mpeg">
+    Your browser does not support the audio element.
+  </audio>
+
+  <div class="controls">
+    <button onclick="decreaseVolume()">🔉 Volume -</button>
+    <button onclick="increaseVolume()">🔊 Volume +</button>
+  </div>
+
+  <div class="info" id="status">Volume: 100% | Speed: 1.0x</div>
+</div>
+
+<script>
+  const audio = document.getElementById("audio");
+  const status = document.getElementById("status");
+
+  audio.controls = false;
+  audio.playbackRate = 1.0;
+  audio.loop = false;
+
+  window.addEventListener("load", () => {
+    audio.play().catch(err => {
+      console.log("Autoplay blocked: ", err);
+    });
+  });
+
+  audio.addEventListener("pause", () => {
+    if (!audio.ended) audio.play();
+  });
+
+  audio.addEventListener("ended", () => {
+    audio.currentTime = audio.duration;
+  });
+
+  audio.addEventListener("seeking", () => {
+    if (audio.currentTime < audio.duration) {
+      audio.currentTime = audio.duration;
+    }
+  });
+
+  function increaseVolume() {
+    audio.volume = Math.min(1, audio.volume + 0.1);
+    updateStatus();
+  }
+
+  function decreaseVolume() {
+    audio.volume = Math.max(0, audio.volume - 0.1);
+    updateStatus();
+  }
+
+  function updateStatus() {
+    status.textContent = `Volume: ${Math.round(audio.volume * 100)}% | Speed: 1.0x`;
+  }
+
+  updateStatus();
+</script>
+
+</body>
+</html>
