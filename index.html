@@ -31,7 +31,7 @@
       font-size: 13px;
       cursor: pointer;
     }
-    .controls button: hover {
+    .controls button:hover {
       background: #880533;
     }
     .info {
@@ -44,9 +44,16 @@
 <body>
 <div class="container">
   <b style="color: white;">Audio Player</b>
-  
-  <audio id="audio" preload="auto" autoplay style="display: none;">
-    <source src="SeedlingsListeningTest1.mp3" type="audio/mpeg">
+
+  <!-- Audio Part 1 -->
+  <audio id="audio1" preload="auto" autoplay style="display: none;">
+    <source src="Test1P1.mp3" type="audio/mpeg">
+    Your browser does not support the audio element.
+  </audio>
+
+  <!-- Audio Part 2 -->
+  <audio id="audio2" preload="auto" style="display: none;">
+    <source src="Test1P2.mp3" type="audio/mpeg">
     Your browser does not support the audio element.
   </audio>
 
@@ -59,49 +66,69 @@
 </div>
 
 <script>
-  const audio = document.getElementById("audio");
+  const audio1 = document.getElementById("audio1");
+  const audio2 = document.getElementById("audio2");
   const status = document.getElementById("status");
 
-  audio.controls = false;
-  audio.playbackRate = 1.0;
-  audio.loop = false;
+  const allAudios = [audio1, audio2];
 
-  window.addEventListener("load", () => {
-    audio.play().catch(err => {
-      console.log("Autoplay blocked: ", err);
+  // Set initial playbackRate and disable controls
+  allAudios.forEach(audio => {
+    audio.controls = false;
+    audio.playbackRate = 1.0;
+    audio.loop = false;
+  });
+
+  // Auto resume if paused (except when finished)
+  audio1.addEventListener("pause", () => {
+    if (!audio1.ended) audio1.play();
+  });
+  audio2.addEventListener("pause", () => {
+    if (!audio2.ended) audio2.play();
+  });
+
+  // Prevent seeking/replay
+  [audio1, audio2].forEach(audio => {
+    audio.addEventListener("seeking", () => {
+      if (audio.currentTime < audio.duration) {
+        audio.currentTime = audio.duration;
+      }
     });
   });
 
-  audio.addEventListener("pause", () => {
-    if (!audio.ended) audio.play();
+  // When Part 1 ends, play Part 2
+  audio1.addEventListener("ended", () => {
+    audio2.play();
   });
 
-  audio.addEventListener("ended", () => {
-    audio.currentTime = audio.duration;
+  // Autoplay attempt on load (in case autoplay is blocked)
+  window.addEventListener("load", () => {
+    audio1.play().catch(err => {
+      console.log("Autoplay blocked:", err);
+    });
   });
 
-  audio.addEventListener("seeking", () => {
-    if (audio.currentTime < audio.duration) {
-      audio.currentTime = audio.duration;
-    }
-  });
-
+  // Volume Controls (affect both parts)
   function increaseVolume() {
-    audio.volume = Math.min(1, audio.volume + 0.1);
+    allAudios.forEach(audio => {
+      audio.volume = Math.min(1, audio.volume + 0.1);
+    });
     updateStatus();
   }
 
   function decreaseVolume() {
-    audio.volume = Math.max(0, audio.volume - 0.1);
+    allAudios.forEach(audio => {
+      audio.volume = Math.max(0, audio.volume - 0.1);
+    });
     updateStatus();
   }
 
   function updateStatus() {
-    status.textContent = `Volume: ${Math.round(audio.volume * 100)}% | Speed: 1.0x`;
+    const vol = Math.round(audio1.volume * 100);
+    status.textContent = `Volume: ${vol}% | Speed: 1.0x`;
   }
 
   updateStatus();
 </script>
-
 </body>
 </html>
