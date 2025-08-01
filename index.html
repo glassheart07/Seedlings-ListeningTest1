@@ -1,174 +1,112 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Listening Test Player</title>
+  <meta charset="UTF-8" />
+  <title>Listening Test</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      padding: 4px;
       background: rgba(50, 3, 3, 0.5);
-    }
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      text-align: center;
-    }
-    .controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      justify-content: center;
-      margin-top: 10px;
-    }
-    .controls button {
-      background: #007bff;
       color: white;
+      text-align: center;
+      padding: 10px;
+    }
+    button {
+      background-color: #007bff;
       border: none;
-      padding: 3px 7px;
-      margin: 2px;
-      border-radius: 3px;
-      font-size: 13px;
-      cursor: pointer;
-    }
-    .controls button:hover {
-      background: #880533;
-    }
-    .info {
-      margin-top: 5px;
       color: white;
-      font-weight: bold;
-    }
-    #startScreen {
-      text-align: center;
-      padding: 30px;
-    }
-    #startScreen button {
-      font-size: 18px;
       padding: 10px 20px;
+      font-size: 16px;
       cursor: pointer;
+      border-radius: 4px;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    audio {
+      display: none; /* Hide all audio elements */
     }
   </style>
 </head>
 <body>
-<div id="mainContainer" class="container">
 
-  <!-- Start screen -->
-  <div id="startScreen">
-    <button onclick="startTest()">▶ Start Listening Test</button>
-  </div>
+  <h2>Listening Test</h2>
+  <button id="startButton" onclick="startAudio()">▶ Start Listening Test</button>
 
-  <!-- Hidden audio elements -->
-  <audio id="audio1" preload="auto" style="display: none;">
+  <!-- Hidden audio parts -->
+  <audio id="audio1" preload="auto">
     <source src="Test1P1.mp3" type="audio/mpeg">
     Your browser does not support the audio element.
   </audio>
 
-  <audio id="audio2" preload="auto" style="display: none;">
+  <audio id="audio2" preload="auto">
     <source src="Test1P2.mp3" type="audio/mpeg">
     Your browser does not support the audio element.
   </audio>
 
-  <audio id="audio3" preload="auto" style="display: none;">
+  <audio id="audio3" preload="auto">
     <source src="Test1P3.mp3" type="audio/mpeg">
     Your browser does not support the audio element.
   </audio>
 
-  <!-- Volume controls -->
-  <div class="controls" id="volumeControls" style="display: none;">
-    <button onclick="decreaseVolume()">🔉 Volume -</button>
-    <button onclick="increaseVolume()">🔊 Volume +</button>
-  </div>
+  <script>
+    // Get audio elements in an array
+    const parts = [
+      document.getElementById('audio1'),
+      document.getElementById('audio2'),
+      document.getElementById('audio3')
+    ];
 
-  <!-- Info display -->
-  <div class="info" id="status" style="display: none;">Volume: 100% | Speed: 1.0x</div>
-</div>
+    // Track current part index
+    let currentPartIndex = 0;
 
-<script>
-  // Block replay using sessionStorage
-  if (sessionStorage.getItem("audioPlayed")) {
-    document.body.innerHTML = `
-      <div style="text-align:center; color:white; font-size:18px; padding:20px;">
-        ⚠️ Audio has already been played.<br>You cannot replay it in this session.
-      </div>`;
-  } else {
-    // First-time session: define audio elements
-    const audio1 = document.getElementById("audio1");
-    const audio2 = document.getElementById("audio2");
-    const audio3 = document.getElementById("audio3");
-    const allAudios = [audio1, audio2, audio3];
-    const status = document.getElementById("status");
+    // Load saved part and time from localStorage
+    const savedPart = localStorage.getItem('listening_part');
+    const savedTime = localStorage.getItem('listening_time');
 
-    // Common setup
-    allAudios.forEach(audio => {
-      audio.controls = false;
-      audio.playbackRate = 1.0;
-      audio.loop = false;
+    if (savedPart !== null && savedTime !== null) {
+      currentPartIndex = parseInt(savedPart);
+      parts[currentPartIndex].currentTime = parseFloat(savedTime);
+    }
 
-      audio.addEventListener("pause", () => {
-        if (!audio.ended) audio.play();
-      });
-
-      audio.addEventListener("seeking", () => {
-        if (audio.currentTime < audio.duration) {
-          audio.currentTime = audio.duration;
-        }
-      });
-    });
-
-    // Chain playback
-    audio1.addEventListener("ended", () => audio2.play());
-    audio2.addEventListener("ended", () => audio3.play());
-    audio3.addEventListener("ended", () => {
-      audio3.currentTime = audio3.duration;
-    });
-
-    // Start test button handler
-    function startTest() {
-      // Hide start screen
-      document.getElementById("startScreen").style.display = "none";
-
-      // Show controls and status
-      document.getElementById("volumeControls").style.display = "flex";
-      status.style.display = "block";
-
-      // Set session flag to block replay on refresh
-      sessionStorage.setItem("audioPlayed", "yes");
-
-      // Play first audio
-      audio1.play().catch(err => {
-        alert("Audio could not be played. Please check your browser settings.");
-        console.error(err);
+    // Save audio progress every time it updates
+    function trackProgress(audio, index) {
+      audio.addEventListener('timeupdate', () => {
+        localStorage.setItem('listening_part', index);
+        localStorage.setItem('listening_time', audio.currentTime);
       });
     }
 
-    // Volume functions
-    function increaseVolume() {
-      allAudios.forEach(audio => {
-        audio.volume = Math.min(1, audio.volume + 0.1);
-      });
-      updateStatus();
+    // When one part ends, automatically start the next
+    function chainParts() {
+      for (let i = 0; i < parts.length; i++) {
+        trackProgress(parts[i], i);
+
+        parts[i].addEventListener('ended', () => {
+          if (i + 1 < parts.length) {
+            currentPartIndex = i + 1;
+            parts[i + 1].play();
+          } else {
+            // All parts finished – clear saved data
+            localStorage.removeItem('listening_part');
+            localStorage.removeItem('listening_time');
+          }
+        });
+      }
     }
 
-    function decreaseVolume() {
-      allAudios.forEach(audio => {
-        audio.volume = Math.max(0, audio.volume - 0.1);
-      });
-      updateStatus();
+    // Start the audio sequence
+    function startAudio() {
+      // Hide the start button after clicking
+      document.getElementById('startButton').style.display = 'none';
+
+      // Set up chaining between parts
+      chainParts();
+
+      // Start playing the current part (based on saved or default)
+      parts[currentPartIndex].play();
     }
+  </script>
 
-    function updateStatus() {
-      const vol = Math.round(audio1.volume * 100);
-      status.textContent = `Volume: ${vol}% | Speed: 1.0x`;
-    }
-
-    updateStatus();
-
-    // Expose functions globally
-    window.startTest = startTest;
-    window.increaseVolume = increaseVolume;
-    window.decreaseVolume = decreaseVolume;
-  }
-</script>
 </body>
 </html>
