@@ -42,93 +42,121 @@
   </style>
 </head>
 <body>
-<div class="container">
+<div class="container" id="mainContainer">
   <b style="color: white;">Audio Player</b>
 
-  <!-- Audio Part 1 -->
+  <!-- Hidden audio elements for 3 parts -->
   <audio id="audio1" preload="auto" autoplay style="display: none;">
     <source src="Test1P1.mp3" type="audio/mpeg">
     Your browser does not support the audio element.
   </audio>
 
-  <!-- Audio Part 2 -->
   <audio id="audio2" preload="auto" style="display: none;">
     <source src="Test1P2.mp3" type="audio/mpeg">
     Your browser does not support the audio element.
   </audio>
 
+  <audio id="audio3" preload="auto" style="display: none;">
+    <source src="Test1P3.mp3" type="audio/mpeg">
+    Your browser does not support the audio element.
+  </audio>
+
+  <!-- Volume controls -->
   <div class="controls">
     <button onclick="decreaseVolume()">🔉 Volume -</button>
     <button onclick="increaseVolume()">🔊 Volume +</button>
   </div>
 
+  <!-- Status display -->
   <div class="info" id="status">Volume: 100% | Speed: 1.0x</div>
 </div>
 
 <script>
-  const audio1 = document.getElementById("audio1");
-  const audio2 = document.getElementById("audio2");
-  const status = document.getElementById("status");
+  // Check if the audio has already been played in this browser session
+  if (sessionStorage.getItem("audioPlayed")) {
+    // If yes, prevent re-listening and show a warning message
+    document.body.innerHTML = `
+      <div style="text-align:center; color:white; font-size:18px; padding:20px;">
+        ⚠️ Audio has already been played.<br>You cannot replay it in this session.
+      </div>`;
+  } else {
+    // First time playing in this session — mark it
+    sessionStorage.setItem("audioPlayed", "yes");
 
-  const allAudios = [audio1, audio2];
+    // Get all audio elements and status display
+    const audio1 = document.getElementById("audio1");
+    const audio2 = document.getElementById("audio2");
+    const audio3 = document.getElementById("audio3");
+    const allAudios = [audio1, audio2, audio3];
+    const status = document.getElementById("status");
 
-  // Set initial playbackRate and disable controls
-  allAudios.forEach(audio => {
-    audio.controls = false;
-    audio.playbackRate = 1.0;
-    audio.loop = false;
-  });
-
-  // Auto resume if paused (except when finished)
-  audio1.addEventListener("pause", () => {
-    if (!audio1.ended) audio1.play();
-  });
-  audio2.addEventListener("pause", () => {
-    if (!audio2.ended) audio2.play();
-  });
-
-  // Prevent seeking/replay
-  [audio1, audio2].forEach(audio => {
-    audio.addEventListener("seeking", () => {
-      if (audio.currentTime < audio.duration) {
-        audio.currentTime = audio.duration;
-      }
-    });
-  });
-
-  // When Part 1 ends, play Part 2
-  audio1.addEventListener("ended", () => {
-    audio2.play();
-  });
-
-  // Autoplay attempt on load (in case autoplay is blocked)
-  window.addEventListener("load", () => {
-    audio1.play().catch(err => {
-      console.log("Autoplay blocked:", err);
-    });
-  });
-
-  // Volume Controls (affect both parts)
-  function increaseVolume() {
+    // Common settings for all audio parts
     allAudios.forEach(audio => {
-      audio.volume = Math.min(1, audio.volume + 0.1);
+      audio.controls = false;          // Hide native controls
+      audio.playbackRate = 1.0;        // Lock playback speed
+      audio.loop = false;              // No looping
+
+      // Prevent pausing manually
+      audio.addEventListener("pause", () => {
+        if (!audio.ended) audio.play();
+      });
+
+      // Prevent seeking back or skipping
+      audio.addEventListener("seeking", () => {
+        if (audio.currentTime < audio.duration) {
+          audio.currentTime = audio.duration;
+        }
+      });
     });
-    updateStatus();
-  }
 
-  function decreaseVolume() {
-    allAudios.forEach(audio => {
-      audio.volume = Math.max(0, audio.volume - 0.1);
+    // Automatically move from part 1 → 2 → 3
+    audio1.addEventListener("ended", () => {
+      audio2.play();
     });
+
+    audio2.addEventListener("ended", () => {
+      audio3.play();
+    });
+
+    audio3.addEventListener("ended", () => {
+      // At the end of part 3, just lock the end
+      audio3.currentTime = audio3.duration;
+    });
+
+    // Try to start part 1 on page load
+    window.addEventListener("load", () => {
+      audio1.play().catch(err => {
+        console.log("Autoplay blocked:", err);
+      });
+    });
+
+    // Volume control functions (apply to all 3 parts)
+    function increaseVolume() {
+      allAudios.forEach(audio => {
+        audio.volume = Math.min(1, audio.volume + 0.1);
+      });
+      updateStatus();
+    }
+
+    function decreaseVolume() {
+      allAudios.forEach(audio => {
+        audio.volume = Math.max(0, audio.volume - 0.1);
+      });
+      updateStatus();
+    }
+
+    // Update status display
+    function updateStatus() {
+      const vol = Math.round(audio1.volume * 100);
+      status.textContent = `Volume: ${vol}% | Speed: 1.0x`;
+    }
+
     updateStatus();
-  }
 
-  function updateStatus() {
-    const vol = Math.round(audio1.volume * 100);
-    status.textContent = `Volume: ${vol}% | Speed: 1.0x`;
+    // Expose functions to the global scope so buttons can call them
+    window.increaseVolume = increaseVolume;
+    window.decreaseVolume = decreaseVolume;
   }
-
-  updateStatus();
 </script>
 </body>
 </html>
